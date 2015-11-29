@@ -70,7 +70,6 @@ public class FootballParser {
 				}
 				i++;
 			}
-			i = 0;
 			getTeamBench("homeDetails", e).stream().forEach((fp)->{homeTeam.addPlayer(fp);});
 			getTeamBench("awayDetails", e).stream().forEach((fp)->{awayTeam.addPlayer(fp);});
 		}
