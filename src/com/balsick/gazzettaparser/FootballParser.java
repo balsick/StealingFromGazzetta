@@ -46,11 +46,11 @@ public class FootballParser {
 		for (Element e : elements){
 			Element lastUpdate = e.getElementsByClass("lastupdate").get(0);
 			FootballTeam homeTeam = new FootballTeam();
-			FootballTeam outerTeam = new FootballTeam();
+			FootballTeam awayTeam = new FootballTeam();
 			homeTeam.name = e.getElementsByClass("teamName").get(0).text();
-			outerTeam.name = e.getElementsByClass("teamName").get(1).text();
+			awayTeam.name = e.getElementsByClass("teamName").get(1).text();
 			teams.add(homeTeam);
-			teams.add(outerTeam);
+			teams.add(awayTeam);
 			int i = 0;
 			Elements teamPlayersInner = e.getElementsByClass("team-players-inner");// 1 per squadra
 			for (Element team : teamPlayersInner){
@@ -64,49 +64,39 @@ public class FootballParser {
 						System.out.println("Adding player "+fp.surname+"\t to team "+homeTeam.name);
 					}
 					else {
-						outerTeam.addPlayer(fp);
-						System.out.println("Adding player "+fp.surname+"\t to team "+outerTeam.name);
+						awayTeam.addPlayer(fp);
+						System.out.println("Adding player "+fp.surname+"\t to team "+awayTeam.name);
 					}
 				}
 				i++;
 			}
 			i = 0;
-			Elements teamPlayersBench = e.getElementsByClass("homeDetails");
-			String listOfBenchPlayersInString = teamPlayersBench.get(0).getElementsMatchingOwnText("^Panchina:")
-					.get(0).parent().text();
-			System.out.println(listOfBenchPlayersInString);
-			StringTokenizer st = new StringTokenizer(listOfBenchPlayersInString, "0123456789?,");
-			while (st.hasMoreTokens()){
-				String a = st.nextToken().replace("?", "");
-				a = cleanFrom8194(a);
-				if (a.length() == 0)
-					continue;
-				FootballPlayer fp = new FootballPlayer();
-				fp.surname = a;
-				fp.status = FootballConstants.BENCH;
-				homeTeam.addPlayer(fp);
-				System.out.println(a);
-			}
-			teamPlayersBench = e.getElementsByClass("awayDetails");
-			listOfBenchPlayersInString = teamPlayersBench.get(0).getElementsMatchingOwnText("^Panchina:")
-					.get(0).parent().text();
-			System.out.println(listOfBenchPlayersInString);
-			st = new StringTokenizer(listOfBenchPlayersInString, "0123456789?,");
-			st.nextToken();
-			while (st.hasMoreTokens()){
-				String a = st.nextToken().replace("?", "");
-				a = cleanFrom8194(a);
-				if (a.length() == 0)
-					continue;
-				FootballPlayer fp = new FootballPlayer();
-				fp.surname = a;
-				fp.status = FootballConstants.BENCH;
-				outerTeam.addPlayer(fp);
-				System.out.println(a);
-			}
+			getTeamBench("homeDetails", e).stream().forEach((fp)->{homeTeam.addPlayer(fp);});
+			getTeamBench("awayDetails", e).stream().forEach((fp)->{awayTeam.addPlayer(fp);});
 		}
 		
 	draw();
+	}
+	
+	private List<FootballPlayer> getTeamBench(String team, Element e){
+		List<FootballPlayer> players = new ArrayList<>();
+		Elements teamPlayersBench = e.getElementsByClass(team);
+		String listOfBenchPlayersInString = teamPlayersBench.get(0).getElementsMatchingOwnText("^Panchina:")
+				.get(0).parent().text();
+		System.out.println(listOfBenchPlayersInString);
+		StringTokenizer st = new StringTokenizer(listOfBenchPlayersInString, "0123456789?,");
+		while (st.hasMoreTokens()){
+			String a = st.nextToken().replace("?", "");
+			a = cleanFrom8194(a);
+			if (a.length() == 0)
+				continue;
+			FootballPlayer fp = new FootballPlayer();
+			fp.surname = a;
+			fp.status = FootballConstants.BENCH;
+			players.add(fp);
+			System.out.println(a);
+		}
+		return players;
 	}
 	
 	private String cleanFrom8194(String a){
