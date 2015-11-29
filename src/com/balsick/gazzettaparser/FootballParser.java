@@ -44,37 +44,36 @@ public class FootballParser {
 			return;
 		}
 		for (Element e : elements){
-			Element lastUpdate = e.getElementsByClass("lastupdate").get(0);
+//			Element lastUpdate = e.getElementsByClass("lastupdate").get(0);
+			Elements teamPlayersInner = e.getElementsByClass("team-players-inner");
+			Elements teamNames = e.getElementsByClass("teamName");
+			
 			FootballTeam homeTeam = new FootballTeam();
-			FootballTeam awayTeam = new FootballTeam();
-			homeTeam.name = e.getElementsByClass("teamName").get(0).text();
-			awayTeam.name = e.getElementsByClass("teamName").get(1).text();
 			teams.add(homeTeam);
+			homeTeam.name = teamNames.get(0).text();
+			getTeamPlayers(teamPlayersInner.get(0)).forEach((fp)->homeTeam.addPlayer(fp));
+			getTeamBench("homeDetails", e).stream().forEach((fp)->homeTeam.addPlayer(fp));
+			
+			FootballTeam awayTeam = new FootballTeam();
 			teams.add(awayTeam);
-			int i = 0;
-			Elements teamPlayersInner = e.getElementsByClass("team-players-inner");// 1 per squadra
-			for (Element team : teamPlayersInner){
-				Elements teamPlayers = team.getElementsByClass("team-player");
-				for (Element player : teamPlayers){
-					FootballPlayer fp = new FootballPlayer();
-					fp.surname = player.text();
-					fp.status = FootballConstants.PLAYING;
-					if (i == 0){
-						homeTeam.addPlayer(fp);
-						System.out.println("Adding player "+fp.surname+"\t to team "+homeTeam.name);
-					}
-					else {
-						awayTeam.addPlayer(fp);
-						System.out.println("Adding player "+fp.surname+"\t to team "+awayTeam.name);
-					}
-				}
-				i++;
-			}
-			getTeamBench("homeDetails", e).stream().forEach((fp)->{homeTeam.addPlayer(fp);});
-			getTeamBench("awayDetails", e).stream().forEach((fp)->{awayTeam.addPlayer(fp);});
+			awayTeam.name = teamNames.get(1).text();
+			getTeamPlayers(teamPlayersInner.get(1)).forEach((fp)->awayTeam.addPlayer(fp));
+			getTeamBench("awayDetails", e).stream().forEach((fp)->awayTeam.addPlayer(fp));
 		}
 		
 	draw();
+	}
+	
+	private List<FootballPlayer> getTeamPlayers(Element team){
+		List<FootballPlayer> players = new ArrayList<>();
+		Elements teamPlayers = team.getElementsByClass("team-player");
+		for (Element player : teamPlayers){
+			FootballPlayer fp = new FootballPlayer();
+			fp.surname = player.text();
+			fp.status = FootballConstants.PLAYING;
+			players.add(fp);
+		}
+		return players;
 	}
 	
 	private List<FootballPlayer> getTeamBench(String team, Element e){
@@ -85,7 +84,9 @@ public class FootballParser {
 		System.out.println(listOfBenchPlayersInString);
 		StringTokenizer st = new StringTokenizer(listOfBenchPlayersInString, "0123456789?,");
 		while (st.hasMoreTokens()){
-			String a = st.nextToken().replace("?", "");
+			String a = st.nextToken();
+			if (a.startsWith("Panchina:"))
+				continue;
 			a = cleanFrom8194(a);
 			if (a.length() == 0)
 				continue;
@@ -99,15 +100,16 @@ public class FootballParser {
 	}
 	
 	private String cleanFrom8194(String a){
-		for (int l = 0; l < a.length();){
-			if (a.charAt(l) == 8194)
+		for (int l = 0; l < a.length();l++){
+			if (a.charAt(l) == 8194) {
 				a = a.substring(0, l)+a.substring(l+1);
-			else
-				l++;
+				l--;
+			}
 		}
 		return a.trim();
 	}
 	
+	@SuppressWarnings("serial")
 	private void draw(){
 		JFrame frame = new JFrame("CIAO");
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -121,7 +123,7 @@ public class FootballParser {
 				teamname.setForeground(Color.cyan);
 				add(teamname);
 				Collections.sort(ft.players, (a,b) -> {
-					if (a.isPlaying() && !(b.isPlaying()))
+					if (a.isPlaying() && b.isPlaying())
 						return a.surname.compareTo(b.surname);
 					if (a.isPlaying())
 						return -1;
