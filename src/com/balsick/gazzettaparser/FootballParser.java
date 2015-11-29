@@ -52,13 +52,13 @@ public class FootballParser {
 			teams.add(homeTeam);
 			homeTeam.name = teamNames.get(0).text();
 			getTeamPlayers(teamPlayersInner.get(0)).forEach((fp)->homeTeam.addPlayer(fp));
-			getTeamBench("homeDetails", e).stream().forEach((fp)->homeTeam.addPlayer(fp));
+			getTeamBench("homeDetails", e).forEach((fp)->homeTeam.addPlayer(fp));
 			
 			FootballTeam awayTeam = new FootballTeam();
 			teams.add(awayTeam);
 			awayTeam.name = teamNames.get(1).text();
 			getTeamPlayers(teamPlayersInner.get(1)).forEach((fp)->awayTeam.addPlayer(fp));
-			getTeamBench("awayDetails", e).stream().forEach((fp)->awayTeam.addPlayer(fp));
+			getTeamBench("awayDetails", e).forEach((fp)->awayTeam.addPlayer(fp));
 		}
 		
 	draw();
@@ -67,12 +67,12 @@ public class FootballParser {
 	private List<FootballPlayer> getTeamPlayers(Element team){
 		List<FootballPlayer> players = new ArrayList<>();
 		Elements teamPlayers = team.getElementsByClass("team-player");
-		for (Element player : teamPlayers){
+		teamPlayers.forEach((player)->{
 			FootballPlayer fp = new FootballPlayer();
 			fp.surname = player.text();
 			fp.status = FootballConstants.PLAYING;
 			players.add(fp);
-		}
+		});
 		return players;
 	}
 	
@@ -85,10 +85,8 @@ public class FootballParser {
 		StringTokenizer st = new StringTokenizer(listOfBenchPlayersInString, "0123456789?,");
 		while (st.hasMoreTokens()){
 			String a = st.nextToken();
-			if (a.startsWith("Panchina:"))
-				continue;
 			a = cleanFrom8194(a);
-			if (a.length() == 0)
+			if (a.length() == 0 || a.startsWith("Panchina:"))
 				continue;
 			FootballPlayer fp = new FootballPlayer();
 			fp.surname = a;
@@ -114,35 +112,36 @@ public class FootballParser {
 		JFrame frame = new JFrame("CIAO");
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		JPanel panel = new JPanel(new FlowLayout());
-		for(final FootballTeam ft : teams){
+		teams.stream()
+		.sorted((a,b)->a.name.compareTo(b.name))
+		.forEach(ft->{
 			JPanel ftPanel = new JPanel(){
 				{
-				setBackground(Color.white);
-				JLabel teamname = new JLabel(ft.name);
-				teamname.setFont(new Font("Arial", Font.BOLD, 30));
-				teamname.setForeground(Color.cyan);
-				add(teamname);
-				Collections.sort(ft.players, (a,b) -> {
-					if (a.isPlaying() && b.isPlaying())
-						return a.surname.compareTo(b.surname);
-					if (a.isPlaying())
-						return -1;
-					if (b.isPlaying())
+					setBackground(Color.white);
+					JLabel teamname = new JLabel(ft.name);
+					teamname.setFont(new Font("Arial", Font.BOLD, 30));
+					teamname.setForeground(Color.cyan);
+					add(teamname);
+					ft.players.stream()
+					.sorted((a,b) -> {
+						if (a.isPlaying() == b.isPlaying())
+							return a.surname.compareTo(b.surname);
+						if (a.isPlaying())
+							return -1;
 						return 1;
-					return a.surname.compareTo(b.surname);
-				});
-				for (FootballPlayer fp : ft.players){
-					JLabel label = new JLabel(fp.surname);
-					label.setForeground(Color.white);
-					label.setOpaque(true);
-					label.setBackground(fp.isPlaying() ? Color.green : Color.red);
-					add(label);
-				}
+					})
+					.forEach((fp)->{
+						JLabel label = new JLabel(fp.surname);
+						label.setForeground(Color.white);
+						label.setOpaque(true);
+						label.setBackground(fp.isPlaying() ? Color.green : Color.red);
+						add(label);
+					});
 				}
 			};
 			ftPanel.setLayout(new BoxLayout(ftPanel, BoxLayout.Y_AXIS));
 			panel.add(ftPanel);
-		}
+		});
 		JScrollPane sc = new JScrollPane(panel, ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 		frame.setContentPane(sc);
 		frame.setSize(new Dimension(1000, 600));

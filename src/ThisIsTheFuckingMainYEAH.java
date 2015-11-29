@@ -4,7 +4,9 @@ public class ThisIsTheFuckingMainYEAH {
 	
 	public static void main(String[] args){
 		System.out.println("YEAH WE STARTED!!!");
-		new FootballParser().parse();
+		FootballParser fp = new FootballParser();
+		// args manager?
+		fp.parse();
 	}
 
 }
