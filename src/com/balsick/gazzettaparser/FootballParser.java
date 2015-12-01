@@ -6,9 +6,11 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.StringTokenizer;
+import java.util.stream.Collectors;
 
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
@@ -25,6 +27,7 @@ import org.jsoup.select.Elements;
 
 public class FootballParser {
 	List<FootballTeam> teams = new ArrayList<>();
+	Map<String, FootballPlayer> players = new HashMap<>();
 	
 	public void parse(){
 
@@ -51,17 +54,15 @@ public class FootballParser {
 			FootballTeam homeTeam = new FootballTeam();
 			teams.add(homeTeam);
 			homeTeam.name = teamNames.get(0).text();
-			getTeamPlayers(teamPlayersInner.get(0)).forEach((fp)->homeTeam.addPlayer(fp));
-			getTeamBench("homeDetails", e).forEach((fp)->homeTeam.addPlayer(fp));
+			homeTeam.addPlayers(getTeamPlayers(teamPlayersInner.get(0)));
+			homeTeam.addPlayers(getTeamBench("homeDetails", e));
 			
 			FootballTeam awayTeam = new FootballTeam();
 			teams.add(awayTeam);
 			awayTeam.name = teamNames.get(1).text();
-			getTeamPlayers(teamPlayersInner.get(1)).forEach((fp)->awayTeam.addPlayer(fp));
-			getTeamBench("awayDetails", e).forEach((fp)->awayTeam.addPlayer(fp));
+			awayTeam.addPlayers(getTeamPlayers(teamPlayersInner.get(1)));
+			awayTeam.addPlayers(getTeamBench("awayDetails", e));
 		}
-		
-	draw();
 	}
 	
 	private List<FootballPlayer> getTeamPlayers(Element team){
@@ -69,9 +70,10 @@ public class FootballParser {
 		Elements teamPlayers = team.getElementsByClass("team-player");
 		teamPlayers.forEach((player)->{
 			FootballPlayer fp = new FootballPlayer();
-			fp.surname = player.text();
+			fp.player = player.text();
 			fp.status = FootballConstants.PLAYING;
 			players.add(fp);
+			FootballParser.this.players.put(fp.player, fp);
 		});
 		return players;
 	}
@@ -81,7 +83,7 @@ public class FootballParser {
 		Elements teamPlayersBench = e.getElementsByClass(team);
 		String listOfBenchPlayersInString = teamPlayersBench.get(0).getElementsMatchingOwnText("^Panchina:")
 				.get(0).parent().text();
-		System.out.println(listOfBenchPlayersInString);
+//		System.out.println(listOfBenchPlayersInString);
 		StringTokenizer st = new StringTokenizer(listOfBenchPlayersInString, "0123456789?,");
 		while (st.hasMoreTokens()){
 			String a = st.nextToken();
@@ -89,10 +91,11 @@ public class FootballParser {
 			if (a.length() == 0 || a.startsWith("Panchina:"))
 				continue;
 			FootballPlayer fp = new FootballPlayer();
-			fp.surname = a;
+			fp.player = a;
 			fp.status = FootballConstants.BENCH;
 			players.add(fp);
-			System.out.println(a);
+			FootballParser.this.players.put(fp.player, fp);
+//			System.out.println(a);
 		}
 		return players;
 	}
@@ -107,7 +110,16 @@ public class FootballParser {
 		return a.trim();
 	}
 	
-	@SuppressWarnings("serial")
+	public List<FootballPlayer> getPlayers(Map<String, List<String>> requestParameters) {
+		List<String> players = requestParameters.get("players");
+		return FootballParser.this.players
+				.keySet().stream()
+				.filter((s)->players == null || players.contains(s))
+				.map((s)->this.players.get(s))
+				.collect(Collectors.toList());
+	}
+	
+	@SuppressWarnings({ "serial", "unused"})
 	private void draw(){
 		JFrame frame = new JFrame("CIAO");
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -125,13 +137,13 @@ public class FootballParser {
 					ft.players.stream()
 					.sorted((a,b) -> {
 						if (a.isPlaying() == b.isPlaying())
-							return a.surname.compareTo(b.surname);
+							return a.player.compareTo(b.player);
 						if (a.isPlaying())
 							return -1;
 						return 1;
 					})
 					.forEach((fp)->{
-						JLabel label = new JLabel(fp.surname);
+						JLabel label = new JLabel(fp.player);
 						label.setForeground(Color.white);
 						label.setOpaque(true);
 						label.setBackground(fp.isPlaying() ? Color.green : Color.red);
