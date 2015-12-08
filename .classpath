@@ -3,5 +3,6 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/jre1.8.0_66"/>
 	<classpathentry kind="lib" path="E:/Enrico/Progetti/StealingFromGazzetta/lib/jsoup-1.8.3.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/EBTools"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

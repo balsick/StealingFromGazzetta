@@ -6,11 +6,14 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
@@ -50,18 +53,25 @@ public class FootballParser {
 //			Element lastUpdate = e.getElementsByClass("lastupdate").get(0);
 			Elements teamPlayersInner = e.getElementsByClass("team-players-inner");
 			Elements teamNames = e.getElementsByClass("teamName");
-			
 			FootballTeam homeTeam = new FootballTeam();
 			teams.add(homeTeam);
-			homeTeam.name = teamNames.get(0).text();
+			homeTeam.name = teamNames.get(0).child(0).text();
 			homeTeam.addPlayers(getTeamPlayers(teamPlayersInner.get(0)));
-			homeTeam.addPlayers(getTeamBench("homeDetails", e));
+			homeTeam.addPlayers(getTeamBench("homeDetails", e, "Panchina:"));
+			homeTeam.addPlayers(getTeamBench("homeDetails", e, "Squalificati:"));
+			homeTeam.addPlayers(getTeamBench("homeDetails", e, "Indisponibili:"));
+			homeTeam.addPlayers(getTeamBench("homeDetails", e, "Altri:"));
 			
 			FootballTeam awayTeam = new FootballTeam();
 			teams.add(awayTeam);
-			awayTeam.name = teamNames.get(1).text();
+			awayTeam.name = teamNames.get(1).child(0).text();
 			awayTeam.addPlayers(getTeamPlayers(teamPlayersInner.get(1)));
-			awayTeam.addPlayers(getTeamBench("awayDetails", e));
+			awayTeam.addPlayers(getTeamBench("awayDetails", e, "Panchina:"));
+			awayTeam.addPlayers(getTeamBench("awayDetails", e, "Squalificati:"));
+			awayTeam.addPlayers(getTeamBench("awayDetails", e, "Indisponibili:"));
+			awayTeam.addPlayers(getTeamBench("awayDetails", e, "Altri:"));
+			homeTeam.versus = awayTeam;
+			awayTeam.versus = homeTeam;
 		}
 	}
 	
@@ -78,26 +88,43 @@ public class FootballParser {
 		return players;
 	}
 	
-	private List<FootballPlayer> getTeamBench(String team, Element e){
+	private List<FootballPlayer> getTeamBench(String team, Element e, String tag){
 		List<FootballPlayer> players = new ArrayList<>();
 		Elements teamPlayersBench = e.getElementsByClass(team);
-		String listOfBenchPlayersInString = teamPlayersBench.get(0).getElementsMatchingOwnText("^Panchina:")
+		String listOfBenchPlayersInString = teamPlayersBench.get(0).getElementsMatchingOwnText("^"+tag)
 				.get(0).parent().text();
 //		System.out.println(listOfBenchPlayersInString);
-		StringTokenizer st = new StringTokenizer(listOfBenchPlayersInString, "0123456789?,");
+		StringTokenizer st = new StringTokenizer(listOfBenchPlayersInString, ",");
 		while (st.hasMoreTokens()){
 			String a = st.nextToken();
+			if (a.contains(tag))
+				a = a.substring(tag.length());
+			if (a.contains("("))
+				a = a.substring(0, a.indexOf("("));
+			if (a.matches(".*[0-9].*"))
+				a = a.replaceAll("[0-9]", "");
 			a = cleanFrom8194(a);
-			if (a.length() == 0 || a.startsWith("Panchina:"))
+			if (a.length() == 0 || a.contains("(") || a.contains(")") || a.matches(".*[0-9].*"))
 				continue;
 			FootballPlayer fp = new FootballPlayer();
-			fp.player = a;
-			fp.status = FootballConstants.BENCH;
+			fp.player = a.toUpperCase();
+			fp.status = getStatusFor(tag);
 			players.add(fp);
 			FootballParser.this.players.put(fp.player, fp);
 //			System.out.println(a);
 		}
 		return players;
+	}
+	
+	private String getStatusFor(String tag){
+		switch (tag){
+		case "Panchina:":
+			return FootballConstants.BENCH;
+		case "Squalificati:":
+			return FootballConstants.DISQUALIFIED;
+		default:
+			return FootballConstants.UNAVAILABLE;
+		}
 	}
 	
 	private String cleanFrom8194(String a){
@@ -110,13 +137,29 @@ public class FootballParser {
 		return a.trim();
 	}
 	
-	public List<FootballPlayer> getPlayers(Map<String, List<String>> requestParameters) {
-		List<String> players = requestParameters.get("players");
+	public Map<String, FootballPlayer> getPlayersMap(Map<String, List<String>> requestParameters) {
+		return stream(requestParameters)
+				.collect(Collectors.toMap(FootballPlayer::toString, Function.identity()));
+	}
+	
+	public Object getPlayers(Map<String, List<String>> requestParameters) {
+		if (requestParameters.isEmpty() || (
+				requestParameters.get("options") != null && requestParameters.get("options").contains("list"))
+				)
+			return getPlayersList(requestParameters);
+		return getPlayersMap(requestParameters);
+	}
+	
+	public List<FootballPlayer> getPlayersList(Map<String, List<String>> requestParameters) {
+			return stream(requestParameters).collect(Collectors.toList());
+		}
+	
+	public Stream<FootballPlayer> stream(Map<String, List<String>> requestParameters){
+		List<String> players = requestParameters == null ? null : requestParameters.get("players");
 		return FootballParser.this.players
 				.keySet().stream()
-				.filter((s)->players == null || players.contains(s))
-				.map((s)->this.players.get(s))
-				.collect(Collectors.toList());
+				.filter((s)->players == null || players.contains(s) || players.contains(s.toUpperCase()))
+				.map(this.players::get);
 	}
 	
 	@SuppressWarnings({ "serial", "unused"})

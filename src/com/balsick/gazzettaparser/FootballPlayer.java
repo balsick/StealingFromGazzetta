@@ -5,11 +5,12 @@ import java.util.Map;
 
 import com.balsick.tools.communication.JSonifiable;
 
-public class FootballPlayer implements JSonifiable{
+public class FootballPlayer implements JSonifiable {
 	
-	public String name;
 	public String player;
 	public String status;
+	public FootballTeam team;
+	
 	public boolean isPlaying() {
 		return status.equals(FootballConstants.PLAYING);
 	}
@@ -20,8 +21,12 @@ public class FootballPlayer implements JSonifiable{
 	@Override
 	public Map<String, Object> getJSonMap() {
 		Map<String, Object> map = new HashMap<>();
-		map.put("player", player);
+//		map.put("player", player);
 		map.put("status", status);
+		try {
+			map.put("vsteam", team.getVersus().toString());
+		} catch (NullPointerException ex){
+		}
 		return map;
 	}
 	@Override
