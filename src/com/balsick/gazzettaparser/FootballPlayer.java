@@ -10,6 +10,7 @@ public class FootballPlayer implements JSonifiable {
 	public String player;
 	public String status;
 	public FootballTeam team;
+	boolean toMap = false;
 	
 	public boolean isPlaying() {
 		return status.equals(FootballConstants.PLAYING);
@@ -18,10 +19,16 @@ public class FootballPlayer implements JSonifiable {
 	public String toString() {
 		return player;
 	}
+	
+	public void setToMap(boolean value) {
+		this.toMap = value;
+	}
+	
 	@Override
 	public Map<String, Object> getJSonMap() {
 		Map<String, Object> map = new HashMap<>();
-//		map.put("player", player);
+		if (!toMap)
+			map.put("player", player);
 		map.put("status", status);
 		try {
 			map.put("vsteam", team.getVersus().toString());

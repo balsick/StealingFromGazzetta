@@ -30,6 +30,7 @@ import org.jsoup.select.Elements;
 public class FootballParser {
 	List<FootballTeam> teams = new ArrayList<>();
 	Map<String, FootballPlayer> players = new HashMap<>();
+	private boolean toList = false;
 	
 	public void parse(){
 
@@ -56,19 +57,19 @@ public class FootballParser {
 			teams.add(homeTeam);
 			homeTeam.name = teamNames.get(0).child(0).text();
 			homeTeam.addPlayers(getTeamPlayers(teamPlayersInner.get(0)));
-			homeTeam.addPlayers(getTeamBench("homeDetails", e, "Panchina:"));
-			homeTeam.addPlayers(getTeamBench("homeDetails", e, "Squalificati:"));
-			homeTeam.addPlayers(getTeamBench("homeDetails", e, "Indisponibili:"));
-			homeTeam.addPlayers(getTeamBench("homeDetails", e, "Altri:"));
+			homeTeam.addPlayers(getTeamOthers("homeDetails", e, "Panchina:"));
+			homeTeam.addPlayers(getTeamOthers("homeDetails", e, "Squalificati:"));
+			homeTeam.addPlayers(getTeamOthers("homeDetails", e, "Indisponibili:"));
+			homeTeam.addPlayers(getTeamOthers("homeDetails", e, "Altri:"));
 			
 			FootballTeam awayTeam = new FootballTeam();
 			teams.add(awayTeam);
 			awayTeam.name = teamNames.get(1).child(0).text();
 			awayTeam.addPlayers(getTeamPlayers(teamPlayersInner.get(1)));
-			awayTeam.addPlayers(getTeamBench("awayDetails", e, "Panchina:"));
-			awayTeam.addPlayers(getTeamBench("awayDetails", e, "Squalificati:"));
-			awayTeam.addPlayers(getTeamBench("awayDetails", e, "Indisponibili:"));
-			awayTeam.addPlayers(getTeamBench("awayDetails", e, "Altri:"));
+			awayTeam.addPlayers(getTeamOthers("awayDetails", e, "Panchina:"));
+			awayTeam.addPlayers(getTeamOthers("awayDetails", e, "Squalificati:"));
+			awayTeam.addPlayers(getTeamOthers("awayDetails", e, "Indisponibili:"));
+			awayTeam.addPlayers(getTeamOthers("awayDetails", e, "Altri:"));
 			homeTeam.versus = awayTeam;
 			awayTeam.versus = homeTeam;
 		}
@@ -87,7 +88,7 @@ public class FootballParser {
 		return players;
 	}
 	
-	private List<FootballPlayer> getTeamBench(String team, Element e, String tag){
+	private List<FootballPlayer> getTeamOthers(String team, Element e, String tag){
 		List<FootballPlayer> players = new ArrayList<>();
 		Elements teamPlayersBench = e.getElementsByClass(team);
 		String listOfBenchPlayersInString = teamPlayersBench.get(0).getElementsMatchingOwnText("^"+tag)
@@ -136,28 +137,31 @@ public class FootballParser {
 		return a.trim();
 	}
 	
-	public Map<String, FootballPlayer> getPlayersMap(Map<String, List<String>> requestParameters) {
-		return stream(requestParameters)
-				.collect(Collectors.toMap(FootballPlayer::toString, Function.identity()));
+	public void setToList(boolean toList) {
+		this.toList  = toList;
 	}
 	
-	public Object getPlayers(Map<String, List<String>> requestParameters) {
-		if (requestParameters.isEmpty() || (
-				requestParameters.get("options") != null && requestParameters.get("options").contains("list"))
-				)
+	public Object getPlayers(List<String> requestParameters) {
+		if (toList)
 			return getPlayersList(requestParameters);
 		return getPlayersMap(requestParameters);
 	}
 	
-	public List<FootballPlayer> getPlayersList(Map<String, List<String>> requestParameters) {
+	public Map<String, FootballPlayer> getPlayersMap(List<String> requestParameters) {
+		return stream(requestParameters)
+				.peek((fp) -> fp.setToMap(true))
+				.collect(Collectors.toMap(FootballPlayer::toString, Function.identity()));
+	}
+	
+	public List<FootballPlayer> getPlayersList(List<String> requestParameters) {
 			return stream(requestParameters).collect(Collectors.toList());
 		}
 	
-	public Stream<FootballPlayer> stream(Map<String, List<String>> requestParameters){
-		List<String> players = requestParameters == null ? null : requestParameters.get("players");
+	public Stream<FootballPlayer> stream(List<String> requestParameters){
+		List<String> players = requestParameters;
 		return FootballParser.this.players
 				.keySet().stream()
-				.filter((s)->players == null || players.contains(s) || players.contains(s.toUpperCase()))
+				.filter((s) -> players == null || players.contains(s) || players.contains(s.toUpperCase()))
 				.map(this.players::get);
 	}
 	
