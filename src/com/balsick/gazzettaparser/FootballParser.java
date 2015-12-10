@@ -161,7 +161,7 @@ public class FootballParser {
 		List<String> players = requestParameters;
 		return FootballParser.this.players
 				.keySet().stream()
-				.filter((s) -> players == null || players.contains(s) || players.contains(s.toUpperCase()))
+				.filter((s) -> players == null || players.stream().anyMatch((p)->p.toUpperCase().equals(s.toUpperCase())))
 				.map(this.players::get);
 	}
 	
